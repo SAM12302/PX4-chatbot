@@ -4,7 +4,7 @@ import glob
 import json
 
 all_json = []
-final_json = {}
+
 
 # url_base = "https://docs.px4.io/main/en/"
 
@@ -22,12 +22,13 @@ en_path = r"\en"
 
 filenames = glob.glob(cwd_path + docs_path + en_path + r'**\**\*.md', recursive=True)
 
-for filename in filenames: 
+for filename in filenames:
+    final_json = {}
     with open(filename, 'r', encoding='utf-8') as file:
         raw_text = file.read()
-    final_json["source"] = "PX4-user_guide"
-    final_json["raw_text"] = raw_text
-    final_json["relative_path"] = filename.rsplit(sep=docs_path)[1]
+        final_json["source"] = "PX4-user_guide"
+        final_json["raw_text"] = raw_text
+        final_json["relative_path"] = filename.rsplit(sep=docs_path)[1]
 
     all_json.append(final_json)
 
