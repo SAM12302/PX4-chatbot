@@ -13,7 +13,7 @@ inference_client = InferenceClient(
 )
 
 @retry(tries=3, delay=2)
-def query(text):
+def embed(text):
     result = inference_client.feature_extraction(
         text,
         model=model_id
