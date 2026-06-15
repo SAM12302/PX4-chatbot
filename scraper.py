@@ -2,25 +2,19 @@ from bs4 import BeautifulSoup
 import requests
 import glob
 import json
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 all_json = []
 
+cwd_path = os.getenv("CWD_PATH")
+docs_path = "/docs"
+en_path = "/en"
 
-# url_base = "https://docs.px4.io/main/en/"
-
-# response = requests.get(url_base)
-
-# soup = BeautifulSoup(response.text, "html.parser")
-
-# print("Cleaned Document", soup)
-
-cwd_path = r'C:\Users\Admin\Documents\portfolio_project\PX4-Autopilot'
-docs_path = r"\docs"
-en_path = r"\en"
-
-# print(text)
-
-filenames = glob.glob(cwd_path + docs_path + en_path + r'**\**\*.md', recursive=True)
+filenames = glob.glob(cwd_path + docs_path + en_path + '**/**/*.md', recursive=True)
 
 for filename in filenames:
     final_json = {}

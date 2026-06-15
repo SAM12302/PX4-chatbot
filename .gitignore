@@ -220,3 +220,5 @@ __marimo__/
 output.json
 index.json
 chunks.json
+milvus_px4.db
+*.env
