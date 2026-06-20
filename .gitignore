@@ -217,8 +217,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-output.json
-index.json
-chunks.json
-milvus_px4.db
+*.json
+milvus_px4.db/
 *.env
+test.*
+*.txt

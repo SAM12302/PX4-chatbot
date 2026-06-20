@@ -1,5 +1,5 @@
-from embedder import embed
-from milvus_store import create_collection, insert_into_collection
+from vectordb.embedder import embed
+from vectordb.milvus_store import create_collection, insert_into_collection
 import json
 
 print("Creating milvus collection\n")
