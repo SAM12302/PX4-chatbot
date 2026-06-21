@@ -5,7 +5,7 @@ from huggingface_hub import InferenceClient
 
 dotenv.load_dotenv(".env")
 
-model_id = os.getenv("model_id")
+model_id = os.getenv("EMBEDDING_MODEL")
 hf_token = os.getenv("hf_token")
 
 inference_client = InferenceClient(

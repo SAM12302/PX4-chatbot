@@ -222,3 +222,6 @@ milvus_px4.db/
 *.env
 test.*
 *.txt
+test_ws.py
+node_modules/
+.vscode/
