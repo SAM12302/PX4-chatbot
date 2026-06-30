@@ -1,4 +1,3 @@
-
 # PX4 RAG Chatbot
 
 An open-source Retrieval-Augmented Generation chatbot for the PX4 Autopilot documentation. Built as a portfolio project to demonstrate RAG pipeline design and full-stack chatbot development, and as a contribution to the PX4 open-source community.
@@ -9,9 +8,9 @@ Ask natural-language questions about PX4 flight modes, configuration, parameters
 
 ## Status
 
-**Backend: working end to end.** **Frontend: in progress (Angular scaffolded, not yet wired up).**
+**v1.0 — complete and working end to end.** Backend retrieves and streams grounded answers; frontend is a working ground-control-style chat console connected over WebSocket.
 
-If you're picking this back up after a break, start at [Where I left off](#where-i-left-off).
+This is a completed MVP, not a finished product. See [Future contributions](#future-contributions) for the next round of improvements already identified — QGroundControl docs being the first.
 
 ---
 
@@ -46,7 +45,7 @@ PX4-user_guide (cloned repo, docs/en/**/*.md)
   main.py (FastAPI WebSocket /chat) --> streams tokens to client
         |
         v
-  Angular frontend (chat UI) -- NOT YET CONNECTED
+  Angular frontend (ground-control console UI, signals + WebSocket service)
 ```
 
 ---
@@ -85,7 +84,15 @@ PX4-chatbot/
 │   ├── llm.py               # inference(prompt) -> streaming chat completion
 │   └── main.py              # FastAPI app, /chat WebSocket endpoint
 ├── frontend/
-│   └── px4-chatbot/         # ng new scaffold — components not yet built
+│   └── px4-chatbot/
+│       └── src/app/
+│           ├── message.model.ts     # Message interface
+│           ├── chat.service.ts      # WebSocket connection, signals-based state
+│           ├── app.component.ts/html
+│           └── chat/
+│               ├── chat.component.ts
+│               ├── chat.component.html
+│               └── chat.component.css   # ground-control console styling
 ├── test_ws.py               # standalone WebSocket smoke-test script
 ├── .env                     # gitignored — your local secrets
 ├── .env.example             # template for contributors
@@ -138,46 +145,30 @@ python test_ws.py
 
 ---
 
-## Where I left off
-
-You were about to build the Angular `ChatComponent`, `MessageComponent`, and `InputComponent`, and a WebSocket service to connect to `/chat`. Two open questions were on the table when you paused — answer these before writing code:
-
-1. **Where does the WebSocket connection live?** A shared `Service`, not inside a component directly — so multiple components can use it without duplicating connection logic.
-2. **What does the `Message` interface look like?**
-   ```typescript
-   interface Message {
-       role: 'user' | 'assistant';
-       content: string;
-   }
-   ```
-
-**Next concrete step:** create `chat.service.ts`, decide between native `WebSocket` API or `rxjs/webSocket`, and implement a `connect()` + `sendMessage()` + an observable/callback for incoming tokens.
-
-The message protocol your backend already speaks:
-
-```json
-// client sends
-{"question": "...", "history": [{"role": "user", "content": "..."}, ...]}
-
-// server sends, one per token
-{"type": "token", "content": "..."}
-// then once, at the end
-{"type": "done"}
-// or, on failure
-{"type": "error", "content": "..."}
-```
-
----
-
-## Remaining phases
+## Phases
 
 - [X] Phase 0 — environment and repo setup
 - [X] Phase 1 — ingestion pipeline (`repo_loader.py`, `chunker.py`)
 - [X] Phase 2 — embeddings + Milvus Lite vector store
 - [X] Phase 3 — FastAPI WebSocket RAG backend (retrieval, prompt building, streaming LLM)
+- [X] Phase 4 — Angular frontend (ground-control console UI, streaming, signals-based state)
 - [ ] Phase 3.5 — JWT auth layer on top of the WebSocket (deliberately deferred so auth bugs don't mask RAG bugs)
-- [ ] Phase 4 — Angular frontend (in progress)
-- [ ] Phase 5 — open source launch: polish README, add `CONTRIBUTING.md`, `docker-compose.yml` for one-command setup, demo GIF, first GitHub release
+- [ ] Phase 5 — open source launch polish: `CONTRIBUTING.md`, `docker-compose.yml` for one-command setup, demo GIF, first GitHub release
+
+v1.0 is functionally complete: ask a real PX4 question, get a grounded, streamed answer in a working chat UI. Everything below this line is intentional future work, not unfinished work.
+
+---
+
+## Future contributions
+
+This project is marked complete but not perfect — these are known, scoped next steps, not vague TODOs.
+
+- **QGroundControl documentation.** Currently the knowledge base only covers PX4-user_guide. QGC is the other half of a real PX4 workflow and the chatbot is incomplete without it. Decision already made: extend the *same* Milvus collection rather than creating a second one — see Decisions Log below for the reasoning (vector search degrades gracefully with mixed sources; a second collection + re-ranking would add real complexity for no measurable benefit at this scale). Plan: clone the QGC docs repo, confirm its markdown structure is compatible with the existing `chunker.py`, tag each chunk `source: "QGroundControl-user_guide"`, run through the existing pipeline unchanged.
+- **Metadata filtering at query time.** Once QGC docs are in, watch for cross-source noise in retrieval results. If it shows up, add a Milvus `filter` expression (e.g. `source == "QGroundControl-user_guide"`) scoped by detected intent — don't pre-build this speculatively.
+- **JWT authentication** (Phase 3.5) — was deliberately deferred during MVP build so auth bugs wouldn't mask RAG bugs. Add `POST /token` + WebSocket handshake validation now that the core pipeline is proven.
+- **WebSocket reconnect logic** on the Angular side — currently a dropped connection just shows "offline" with no auto-retry.
+- **Batched embedding during ingest** — `ingest.py` currently makes one HF API call per chunk, which is slow on re-runs. Worth batching if the doc set grows (e.g. once QGC is added).
+- **Distance-threshold filtering in retrieval** — currently all top-5 chunks are used regardless of relevance score; low-similarity chunks (high COSINE distance) could be dropped before prompt building.
 
 ---
 
@@ -192,18 +183,19 @@ Keep adding to this as you go — it's the most valuable part of this README for
 - **Conversation history is sent by the client, not stored server-side.** Keeps the backend stateless, avoids storing potentially sensitive conversations, and scales without a session store.
 - **WebSocket over SSE.** Conversations are inherently bidirectional; one persistent connection per session is a more natural fit than a new HTTP request per turn.
 - **`asyncio.to_thread()` wraps the synchronous `inference()` call** inside the async WebSocket handler so one slow LLM call doesn't block other connected clients.
+- **Frontend visual direction: ground-control console, not chat bubbles.** PX4 pilots' actual working environment is a telemetry HUD — that's the authentic reference point, not a generic Messenger-style UI. No copyrighted PX4/QGC logos used; the drone glyph in the header is an original SVG (lines + circles).
+- **Single Milvus collection for multiple doc sources (PX4 + future QGroundControl), not separate collections with re-ranking.** Vector similarity search naturally surfaces relevant chunks regardless of how many unrelated chunks coexist in the same collection — splitting into parallel collections + Reciprocal Rank Fusion would add real complexity (two round trips, a fusion algorithm to tune) for no measurable benefit at this scale. Each chunk's existing `source` field is enough to distinguish origin; Milvus `filter` expressions are available later if cross-source noise turns out to be a real problem in practice.
 
 ---
 
 ## Known issues / things to watch
 
 - HF Inference Providers occasionally segfaults on stream completion (library-level bug in `huggingface_hub` on Linux) — happens *after* the full answer has already streamed, so it's cosmetic but worth re-checking after upgrading `huggingface_hub`.
-- `ingest.py` makes one HF API call per chunk — re-embedding the full doc set is slow. Consider batching or caching if you re-run it often during development.
-- No retry/reconnect logic yet on the Angular side (doesn't exist yet — build it in from the start when you write `chat.service.ts`).
+- `ingest.py` makes one HF API call per chunk — re-embedding the full doc set is slow. Consider batching, especially once QGC docs roughly double the dataset.
+- No reconnect logic if the WebSocket drops — `chat.service.ts` shows "offline" but doesn't retry. Listed under Future contributions.
 
 ---
 
 ## License
 
 PX4 documentation content is used under PX4's own CC BY 4.0 license. Code in this repository: [choose and add a license — MIT recommended for an open-source portfolio project].
-
