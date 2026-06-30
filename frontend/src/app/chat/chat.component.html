@@ -1,0 +1,83 @@
+<div class="console">
+  <header class="console__header">
+    <div class="brand">
+      <svg class="brand__glyph" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="3" fill="currentColor"/>
+        <line x1="20" y1="20" x2="6"  y2="6"  stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="20" y1="20" x2="34" y2="6"  stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="20" y1="20" x2="6"  y2="34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="20" y1="20" x2="34" y2="34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="6"  cy="6"  r="3" fill="currentColor"/>
+        <circle cx="34" cy="6"  r="3" fill="currentColor"/>
+        <circle cx="6"  cy="34" r="3" fill="currentColor"/>
+        <circle cx="34" cy="34" r="3" fill="currentColor"/>
+      </svg>
+      <div class="brand__text">
+        <span class="brand__title">PX4 ASSISTANT</span>
+        <span class="brand__subtitle">documentation retrieval console</span>
+      </div>
+    </div>
+
+    <div class="status" [ngClass]="'status--' + chat.connectionStatus()">
+      <span class="status__dot"></span>
+      <span class="status__label">{{ chat.connectionStatus() }}</span>
+    </div>
+  </header>
+
+  <main class="console__log">
+    @if (chat.messages().length === 0) {
+      <div class="empty">
+        <p class="empty__lead">No transmissions yet.</p>
+        <p class="empty__hint">Ask a question about PX4 flight modes, parameters, or setup.</p>
+        <div class="suggestions">
+          @for (s of suggestions; track s) {
+            <button class="suggestion" (click)="ask(s)" [disabled]="chat.isStreaming()">{{ s }}</button>
+          }
+        </div>
+      </div>
+    }
+
+    @for (msg of chat.messages(); track $index) {
+      <div class="entry" [class.entry--user]="msg.role === 'user'">
+        <div class="entry__rail">
+          <span class="entry__tag">{{ msg.role === 'user' ? 'YOU' : 'PX4' }}</span>
+        </div>
+        <div class="entry__body">
+          @if (msg.role === 'user') {
+            <p class="entry__text">{{ msg.content }}</p>
+          } @else if (msg.streaming) {
+            <p class="entry__text">{{ msg.content }}<span class="cursor"></span></p>
+          } @else {
+            <div class="entry__content" [innerHTML]="renderMarkdown(msg.content)"></div>
+          }
+        </div>
+      </div>
+    }
+
+    <div #scrollAnchor></div>
+  </main>
+
+  <footer class="console__input">
+    <textarea
+      #inputEl
+      class="input__field"
+      rows="1"
+      placeholder="Transmit a question..."
+      [(ngModel)]="draft"
+      (keydown)="onKeydown($event)"
+      (input)="autoResize(inputEl)"
+      [disabled]="chat.isStreaming() || chat.connectionStatus() === 'offline'"
+    ></textarea>
+    <button
+      class="input__send"
+      (click)="send()"
+      [disabled]="!draft.trim() || chat.isStreaming() || chat.connectionStatus() !== 'online'"
+    >
+      @if (chat.isStreaming()) {
+        <span class="send__spinner"></span>RECEIVING
+      } @else {
+        SEND
+      }
+    </button>
+  </footer>
+</div>
