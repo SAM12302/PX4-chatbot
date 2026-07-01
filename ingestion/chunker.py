@@ -1,5 +1,12 @@
 import json
 import re
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--chunks_file", help="Path to the chunks file", required=True)
+parser.add_argument("--output_file", help="Path to the output json file created from scraper.py",
+                    required=True)
+args = parser.parse_args()
 
 def clean(text):
     """Remove noise from the text for RAG pipeline.
@@ -49,17 +56,20 @@ def chunk(text):
     })
     return all_chunks
 
+def startup(chunks_file, output_file):
+    with open(output_file, 'r') as file:
+        print(f"Reading from {output_file} file\n")
+        all_dict = json.load(file)
 
-with open("output.json", 'r') as file:
-    print("Reading from output.json file\n")
-    all_dict = json.load(file)
+    for i in range(len(all_dict)):
+        all_dict[i]["clean_text"] = clean(all_dict[i]["raw_text"])
+        all_dict[i]["chunks"] = chunk(all_dict[i]["clean_text"])
 
-for i in range(len(all_dict)):
-    all_dict[i]["clean_text"] = clean(all_dict[i]["raw_text"])
-    all_dict[i]["chunks"] = chunk(all_dict[i]["clean_text"])
+    # all_dict[0]["chunks"] = chunk(all_dict[0]["clean_text"])
 
-# all_dict[0]["chunks"] = chunk(all_dict[0]["clean_text"])
+    with open(chunks_file, "w") as file:
+        print(f"Writing to {chunks_file} file\n")
+        json.dump(all_dict, file)
 
-with open("chunks.json", "w") as file:
-    print("Writing to chunks.json file\n")
-    json.dump(all_dict, file)
+if __name__ == "__main__":
+    startup(args.chunks_file, args.output_file)

@@ -1,11 +1,20 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from vectordb.embedder import embed
 from vectordb.milvus_store import create_collection, insert_into_collection
 import json
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--chunks_file", help="Path to the chunks file", required=True)
+args = parser.parse_args()
 
 print("Creating milvus collection\n")
 create_collection()
 
-with open("chunks.json", "r") as file:
+with open(args.chunks_file, "r") as file:
     print("Reading from chunks file\n")
     all_dict = json.load(file)
 
