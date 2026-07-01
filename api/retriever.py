@@ -6,7 +6,7 @@ from vectordb.embedder import embed
 
 dotenv.load_dotenv(".env")
 
-DB = os.getenv("db_name")
+DB = os.getenv("MILVUS_DB_PATH")
 COLLECTION_NAME = os.getenv("collection_name")
 
 def search_embedding(query: str):
