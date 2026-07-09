@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      HF_TOKEN: ${hf_token}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      LLM_MODEL: ${LLM_MODEL:-mistralai/Mistral-7B-Instruct-v0.3}
+      JWT_ENABLED: ${JWT_ENABLED:-false}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-in-production}
+    volumes:
+      - ./ingestion:/app/ingestion
+      - ./vectordb:/app/vectordb
+      - ./api:/app/api
+    command: uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on: []
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "4200:4200"
+    environment:
+      - API_URL=http://backend:8000
+    depends_on:
+      - backend
+
+volumes: {}
+
+networks:
+  default:
+    name: px4-chatbot-network
