@@ -1,16 +1,45 @@
 import asyncio
 import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import os
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, status
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from api.retriever import search_embedding
 from api.prompt_builder import build_prompt
 from api.llm import inference
+from api.auth import create_access_token, verify_token
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+JWT_ENABLED = os.getenv("JWT_ENABLED", "false").lower() == "true"
+
+@app.post("/token")
+async def get_token(user_id: str = "anonymous"):
+    """Issue a JWT token for WebSocket authentication."""
+    token = create_access_token(user_id)
+    return JSONResponse({"access_token": token, "token_type": "bearer"})
+
 @app.websocket("/chat")
-async def chat(websocket: WebSocket):
+async def chat(websocket: WebSocket, token: str = None):
+    if JWT_ENABLED and token:
+        payload = verify_token(token)
+        if not payload:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            print("WebSocket connection rejected: invalid token")
+            return
+        user_id = payload.get("user_id", "anonymous")
+    else:
+        user_id = "anonymous"
+
     await websocket.accept()
-    print("Client connected")
+    print(f"Client connected (user: {user_id})")
 
     try:
         while True:
